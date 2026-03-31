@@ -183,12 +183,13 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
   useEffect(() => {
     setSelStates([]); setSelCities([]); setSelZones([]); setSelCampuses([]);
     setDetailGroup(null); setDetailStatus("all"); setDetailPage(1);
+    setMarksLte(isBIPC ? 300 : 100);
     if (isBIPC) { setIgnoreExam(true); setSkipZeroExam(true); } else { setIgnoreExam(false); }
   }, [stream]);
 
   const resetAll = () => {
     setSelStates([]); setSelCities([]); setSelZones([]); setSelCampuses([]);
-    setFeeFilter(1000); setMarksLte(100); setExamLte(95);
+    setFeeFilter(1000); setMarksLte(isBIPC ? 300 : 100); setExamLte(95);
     setSkipZeroMarks(false); setSkipZeroExam(true); setIgnoreMarks(false); setIgnoreExam(isBIPC);
     setDetailGroup(null); setDetailStatus("all"); setHomePage(1);
   };
@@ -336,19 +337,19 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
               </div>
             </div>
             <div className="overflow-x-auto scrollbar-thin">
-              <table className="w-full text-[13px] table-fixed" style={{ minWidth: 1200 }}>
+              <table className="w-full text-[13px] table-fixed" style={{ minWidth: 1250 }}>
                 <colgroup>
-                  <col style={{ width: 160 }} />
-                  <col style={{ width: 140 }} />
+                  <col style={{ width: 150 }} />
+                  <col style={{ width: 130 }} />
                   <col style={{ width: 90 }} />
                   <col style={{ width: 100 }} />
-                  <col style={{ width: 80 }} />
+                  <col style={{ width: 120 }} />
                   <col style={{ width: 80 }} />
                   <col style={{ width: 70 }} />
                   {!ignoreMarks && <col style={{ width: 70 }} />}
                   {!ignoreExam && <col style={{ width: 70 }} />}
                   <col style={{ width: 100 }} />
-                  <col style={{ width: 120 }} />
+                  <col style={{ width: 100 }} />
                   <col style={{ width: 80 }} />
                 </colgroup>
                 <thead>
@@ -419,7 +420,7 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={scLogo} alt="SC" className="w-8 h-8 object-contain cursor-pointer" onClick={resetAll} />
-            <h1 className="font-display text-base font-bold text-ink leading-none">Year End Concession Review (2025-26)</h1>
+            <h1 className="font-display text-base font-bold text-ink leading-none">Sri Chaitanya - Year End Concession Review (2025-26)</h1>
             <StreamToggle stream={stream} onChange={onStreamChange} />
           </div>
           <div className="flex items-center gap-4">
@@ -506,11 +507,11 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
         </section>
 
         <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <StatCard label="Total" value={filteredCount} icon={Users} color="bg-brand" tooltip="Total concession students matching filters" />
-          {!ignoreMarks && <StatCard label={`Avg Marks ≤ ${marksLte}`} value={totalLowMarks} icon={AlertTriangle} color="bg-status-warning" tooltip={`Students with Avg Marks ≤ ${marksLte}`} />}
-          {!ignoreExam && <StatCard label={`${examLabel} ≤ ${examLte}`} value={totalExamFail} icon={GraduationCap} color="bg-status-danger" tooltip={`Students with ${examLabel} ≤ ${examLte}`} />}
-          <StatCard label="Met" value={totalMet} icon={Users} color="bg-status-success" tooltip="Students meeting all criteria" />
-          <StatCard label="Not Met" value={totalNotMet} icon={AlertTriangle} color="bg-red-600" tooltip="Students failing criteria" />
+          <StatCard label="Total" value={filteredCount} icon={Users} color="bg-brand" tooltip={`${fmt(filteredCount)} out of ${fmt(students.length)} total students match your current location and fee filters.`} />
+          {!ignoreMarks && <StatCard label={`Avg Marks ≤ ${marksLte}`} value={totalLowMarks} icon={AlertTriangle} color="bg-status-warning" tooltip={`${fmt(totalLowMarks)} / ${fmt(filteredCount)} students have Avg Marks ≤ ${marksLte}. These students got high concessions but scored low in academics.`} />}
+          {!ignoreExam && <StatCard label={`${examLabel} ≤ ${examLte}`} value={totalExamFail} icon={GraduationCap} color="bg-status-danger" tooltip={`${fmt(totalExamFail)} / ${fmt(filteredCount)} students have ${examLabel} score ≤ ${examLte}. They received concession but did not meet the ${examLabel} threshold.`} />}
+          <StatCard label="Met" value={totalMet} icon={Users} color="bg-status-success" tooltip={`${fmt(totalMet)} / ${fmt(filteredCount)} students are meeting all the active academic criteria. Their concession appears justified by their performance.`} />
+          <StatCard label="Not Met" value={totalNotMet} icon={AlertTriangle} color="bg-red-600" tooltip={`${fmt(totalNotMet)} / ${fmt(filteredCount)} students failed to meet one or more academic criteria (Avg Marks or ${examLabel}). These are high-concession students with low performance — priority for review.`} />
         </section>
 
         {(() => {
