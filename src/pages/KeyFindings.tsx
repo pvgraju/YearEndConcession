@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft, ChevronDown, X } from "lucide-react";
 import scLogo from "@/assets/sc-logo.png";
 import { cn } from "@/lib/cn";
 import type { Student, Stream } from "@/App";
@@ -127,8 +127,10 @@ export default function KeyFindings({ students, stream, examLabel, onBack, onStr
   const avgFeePaid = totalStudents ? Math.round(data.reduce((a, s) => a + s.FEE_PAID, 0) / totalStudents) : 0;
   const avgCourseFee = totalStudents ? Math.round(data.reduce((a, s) => a + s.COURSE_FEE, 0) / totalStudents) : 0;
   const concessionPct = avgCourseFee > 0 ? Math.round(((avgCourseFee - avgFeePaid) / avgCourseFee) * 100) : 0;
-  const bestZone = [...zoneData].sort((a, b) => a.notMetPct - b.notMetPct)[0];
-  const worstZone = [...zoneData].sort((a, b) => b.notMetPct - a.notMetPct)[0];
+  // Best = lowest notMet%, weighted by total (min 5 students to qualify)
+  const qualifiedZones = zoneData.filter((z) => z.total >= 5);
+  const bestZone = [...qualifiedZones].sort((a, b) => a.notMetPct - b.notMetPct || b.total - a.total)[0] || zoneData[0];
+  const worstZone = [...qualifiedZones].sort((a, b) => b.notMetPct - a.notMetPct || b.total - a.total)[0] || zoneData[zoneData.length - 1];
 
   return (
     <div className="min-h-screen bg-[hsl(220,14%,98%)]">
@@ -143,8 +145,8 @@ export default function KeyFindings({ students, stream, examLabel, onBack, onStr
             <h1 className="font-bold text-[hsl(220,20%,14%)] text-sm" style={{ fontFamily: "'Playfair Display', serif" }}>Key Findings</h1>
             <StreamToggle stream={stream} onChange={onStreamChange} />
           </div>
-          {/* Zone filter */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {selZone && <button onClick={() => setSelZone("")} className="text-[11px] text-[hsl(14,80%,42%)] hover:underline flex items-center gap-1"><X size={12} /> Reset</button>}
             <span className="text-xs text-[hsl(220,10%,46%)]">Zone Incharge:</span>
             <div className="relative">
               <select value={selZone} onChange={(e) => setSelZone(e.target.value)}
@@ -188,12 +190,12 @@ export default function KeyFindings({ students, stream, examLabel, onBack, onStr
             <div className="bg-green-50 border border-green-200 rounded-xl p-4">
               <p className="text-xs text-green-800 font-semibold uppercase tracking-wider">Best Performing Zone Incharge</p>
               <p className="text-lg font-bold text-green-700 mt-1">{bestZone?.fullName}</p>
-              <p className="text-xs text-green-600 mt-0.5">{bestZone?.total} students · Only {bestZone?.notMetPct}% Not Met</p>
+              <p className="text-xs text-green-600 mt-0.5">{bestZone?.total} students · {bestZone?.met} Met · Only {bestZone?.notMetPct}% Not Met</p>
             </div>
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
               <p className="text-xs text-red-800 font-semibold uppercase tracking-wider">Needs Attention — Highest Not Met %</p>
               <p className="text-lg font-bold text-red-700 mt-1">{worstZone?.fullName}</p>
-              <p className="text-xs text-red-600 mt-0.5">{worstZone?.total} students · {worstZone?.notMetPct}% Not Met</p>
+              <p className="text-xs text-red-600 mt-0.5">{worstZone?.total} students · {worstZone?.notMet} Not Met · {worstZone?.notMetPct}% Not Met</p>
             </div>
           </div>
         )}

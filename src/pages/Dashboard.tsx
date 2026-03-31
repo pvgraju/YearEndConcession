@@ -336,7 +336,21 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
               </div>
             </div>
             <div className="overflow-x-auto scrollbar-thin">
-              <table className="w-full text-[13px]">
+              <table className="w-full text-[13px] table-fixed" style={{ minWidth: 1200 }}>
+                <colgroup>
+                  <col style={{ width: 160 }} />
+                  <col style={{ width: 140 }} />
+                  <col style={{ width: 90 }} />
+                  <col style={{ width: 100 }} />
+                  <col style={{ width: 80 }} />
+                  <col style={{ width: 80 }} />
+                  <col style={{ width: 70 }} />
+                  {!ignoreMarks && <col style={{ width: 70 }} />}
+                  {!ignoreExam && <col style={{ width: 70 }} />}
+                  <col style={{ width: 100 }} />
+                  <col style={{ width: 120 }} />
+                  <col style={{ width: 80 }} />
+                </colgroup>
                 <thead>
                   <tr className="bg-surface-muted border-b border-edge">
                     <SortTh tip="Student name" sortKey="NAME" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-left">Name</SortTh>
@@ -344,8 +358,8 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
                     <SortTh tip="Admission number" sortKey="ADM_NO" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-left">Adm No</SortTh>
                     <th title="Mobile number" className="px-3 py-2.5 text-left text-[11px] font-semibold text-ink-muted uppercase tracking-wider">Mobile</th>
                     <SortTh tip="Course track" sortKey="COURSE_TRACK" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-left">Track</SortTh>
-                    <SortTh tip="Course fee before concession" sortKey="COURSE_FEE" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-right">Course Fee</SortTh>
-                    <SortTh tip="Fee paid after concession" sortKey="FEE_PAID" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-right">Fee Paid</SortTh>
+                    <SortTh tip="Course fee" sortKey="COURSE_FEE" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-right">Course Fee</SortTh>
+                    <SortTh tip="Fee paid" sortKey="FEE_PAID" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-right">Fee Paid</SortTh>
                     {!ignoreMarks && <SortTh tip={`Avg Marks — red if ≤ ${marksLte}`} sortKey="MARKS_AVG" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-right">Avg Marks</SortTh>}
                     {!ignoreExam && <SortTh tip={`${examLabel} — red if ≤ ${examLte}`} sortKey="EXAM_MARKS" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-right">{examLabel}</SortTh>}
                     <SortTh tip="Concession reason" sortKey="REASON" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-left">Reason</SortTh>
@@ -359,18 +373,18 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
                     const eBad = !ignoreExam && (() => { if (skipZeroExam && s.EXAM_MARKS === 0) return false; return s.EXAM_MARKS <= examLte; })();
                     return (
                       <tr key={s.ADM_NO} className="border-b border-edge/30 hover:bg-surface-muted/40">
-                        <td className="px-3 py-2 font-medium text-ink whitespace-nowrap">{s.NAME} {s.SURNAME}</td>
-                        <td className="px-3 py-2 text-ink whitespace-nowrap">{s.PARENT_NAME || "—"}</td>
+                        <td className="px-3 py-2 font-medium text-ink truncate" title={`${s.NAME} ${s.SURNAME}`}>{s.NAME} {s.SURNAME}</td>
+                        <td className="px-3 py-2 text-ink truncate" title={s.PARENT_NAME}>{s.PARENT_NAME || "—"}</td>
                         <td className="px-3 py-2 text-ink-muted tabular-nums">{s.ADM_NO}</td>
                         <td className="px-3 py-2 text-ink-muted tabular-nums">{s.MOBILE_NO}</td>
-                        <td className="px-3 py-2 text-ink">{s.COURSE_TRACK || "—"}</td>
+                        <td className="px-3 py-2 text-ink truncate" title={s.COURSE_TRACK}>{s.COURSE_TRACK || "—"}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-ink">{fmt(s.COURSE_FEE)}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-medium text-ink">{fmt(s.FEE_PAID)}</td>
                         {!ignoreMarks && <td className={cn("px-3 py-2 text-right tabular-nums font-medium", mBad ? "text-status-danger" : "text-ink")}>{s.MARKS_AVG}</td>}
                         {!ignoreExam && <td className={cn("px-3 py-2 text-right tabular-nums font-medium", eBad ? "text-status-danger" : "text-ink")}>{s.EXAM_MARKS}</td>}
-                        <td className="px-3 py-2 text-ink max-w-[120px] truncate" title={s.REASON}>{s.REASON || "—"}</td>
-                        <td className="px-3 py-2 text-ink max-w-[150px] truncate" title={s.REASON_DESCRIPTION}>{s.REASON_DESCRIPTION || "—"}</td>
-                        <td className="px-3 py-2 text-ink">{s.SPONSORED_BY || "—"}</td>
+                        <td className="px-3 py-2 text-ink truncate" title={s.REASON}>{s.REASON || "—"}</td>
+                        <td className="px-3 py-2 text-ink truncate" title={s.REASON_DESCRIPTION}>{s.REASON_DESCRIPTION || "—"}</td>
+                        <td className="px-3 py-2 text-ink truncate" title={s.SPONSORED_BY}>{s.SPONSORED_BY || "—"}</td>
                       </tr>
                     );
                   })}
@@ -493,8 +507,8 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
 
         <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <StatCard label="Total" value={filteredCount} icon={Users} color="bg-brand" tooltip="Total concession students matching filters" />
-          {!ignoreMarks && <StatCard label="Avg Marks ≤ cutoff" value={totalLowMarks} icon={AlertTriangle} color="bg-status-warning" tooltip={`Students with Avg Marks ≤ ${marksLte}`} />}
-          {!ignoreExam && <StatCard label={`${examLabel} ≤ cutoff`} value={totalExamFail} icon={GraduationCap} color="bg-status-danger" tooltip={`Students with ${examLabel} ≤ ${examLte}`} />}
+          {!ignoreMarks && <StatCard label={`Avg Marks ≤ ${marksLte}`} value={totalLowMarks} icon={AlertTriangle} color="bg-status-warning" tooltip={`Students with Avg Marks ≤ ${marksLte}`} />}
+          {!ignoreExam && <StatCard label={`${examLabel} ≤ ${examLte}`} value={totalExamFail} icon={GraduationCap} color="bg-status-danger" tooltip={`Students with ${examLabel} ≤ ${examLte}`} />}
           <StatCard label="Met" value={totalMet} icon={Users} color="bg-status-success" tooltip="Students meeting all criteria" />
           <StatCard label="Not Met" value={totalNotMet} icon={AlertTriangle} color="bg-red-600" tooltip="Students failing criteria" />
         </section>
