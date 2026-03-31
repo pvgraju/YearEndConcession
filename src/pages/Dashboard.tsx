@@ -155,7 +155,7 @@ function StatCard({ label, value, icon: Icon, color, tooltip }: {
 /* ------------------------------------------------------------------ */
 /*  Dashboard                                                          */
 /* ------------------------------------------------------------------ */
-export default function Dashboard({ onLogout }: { onLogout: () => void }) {
+export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () => void; onKeyFindings: () => void }) {
   const [selStates, setSelStates] = useState<string[]>([]);
   const [selCities, setSelCities] = useState<string[]>([]);
   const [selZones, setSelZones] = useState<string[]>([]);
@@ -391,9 +391,14 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
             <img src={scLogo} alt="SC" className="w-8 h-8 object-contain" />
             <h1 className="font-display text-base font-bold text-ink leading-none">Year End Concession Review for MPC Students (2025-26)</h1>
           </div>
-          <button onClick={onLogout} className="flex items-center gap-1.5 text-xs text-ink-muted hover:text-status-danger transition-colors">
-            <LogOut size={14} /> Sign out
-          </button>
+          <div className="flex items-center gap-4">
+            <button onClick={onKeyFindings} className="flex items-center gap-1.5 text-xs font-medium text-brand hover:underline transition-colors">
+              Key Findings
+            </button>
+            <button onClick={onLogout} className="flex items-center gap-1.5 text-xs text-ink-muted hover:text-status-danger transition-colors">
+              <LogOut size={14} /> Sign out
+            </button>
+          </div>
         </div>
       </header>
 
