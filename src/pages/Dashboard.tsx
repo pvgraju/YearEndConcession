@@ -4,28 +4,17 @@ import {
   ChevronDown, ChevronRight, ChevronLeft, X, FileText, Search,
 } from "lucide-react";
 import scLogo from "@/assets/sc-logo.png";
-import rawData from "@/data/students.json";
 import { cn } from "@/lib/cn";
-
-interface Student {
-  STATE: string; CITY_NAME: string; CAMPUS_NAME: string; CAMPUS_TYPE: string;
-  ZONE_INCHARGE: string; ADM_NO: number; NAME: string; SURNAME: string;
-  PARENT_NAME: string; MOBILE_NO: number | string; STREAM: string; PROGRAM_NAME: string;
-  COURSE_TRACK: string;
-  MARKS_AVG: number; JEE_MAINS_MARKS: number; COURSE_FEE: number;
-  FEE_PAID: number; SPONSORED_BY: string; REASON: string; REASON_DESCRIPTION: string;
-}
+import type { Student, Stream } from "@/App";
 
 interface GroupRow {
   key: string;
   state: string; city: string; campus: string; zone: string; program: string;
-  total: number; lowMarks: number; jeeFail: number; met: number; notMet: number;
+  total: number; lowMarks: number; examFail: number; met: number; notMet: number;
   students: Student[];
 }
 
-const students: Student[] = rawData as Student[];
 const PAGE_SIZE = 20;
-
 const FEE_OPTIONS = [
   { label: "All", value: Infinity },
   { label: "= 0", value: 0 },
@@ -33,20 +22,6 @@ const FEE_OPTIONS = [
   { label: "< 5,000", value: 5000 },
   { label: "< 10,000", value: 10000 },
 ];
-
-/* Column tooltips */
-const COL_TIPS: Record<string, string> = {
-  state: "State where the campus is located",
-  city: "City of the campus",
-  campus: "Campus name",
-  zone: "Zone Incharge responsible for this campus",
-  program: "Student program (e.g. SR_MPC_LEO, SR_ICON_CIPL)",
-  total: "Total concession students in this group matching all filters",
-  lowMarks: "Students with Marks Avg ≤ threshold — low academic performance despite concession",
-  jeeFail: "Students with JEE Mains ≤ threshold — did not meet JEE criteria despite concession",
-  met: "Students who meet all active academic criteria — concession appears justified",
-  notMet: "Students who failed one or more criteria — priority for review",
-};
 
 /* ------------------------------------------------------------------ */
 /*  Multi-select dropdown                                              */
@@ -124,20 +99,10 @@ function MultiSelect({ selected, onChange, options, placeholder, searchable }: {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Tooltip header cell                                                */
-/* ------------------------------------------------------------------ */
 function Th({ children, tip, className: cls }: { children: React.ReactNode; tip: string; className?: string }) {
-  return (
-    <th title={tip} className={cn("px-3 py-2.5 text-[11px] font-semibold text-ink-muted uppercase tracking-wider cursor-help", cls)}>
-      {children}
-    </th>
-  );
+  return <th title={tip} className={cn("px-3 py-2.5 text-[11px] font-semibold text-ink-muted uppercase tracking-wider cursor-help", cls)}>{children}</th>;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Stat card                                                          */
-/* ------------------------------------------------------------------ */
 function StatCard({ label, value, icon: Icon, color, tooltip }: {
   label: string; value: number; icon: typeof Users; color: string; tooltip: string;
 }) {
@@ -153,21 +118,41 @@ function StatCard({ label, value, icon: Icon, color, tooltip }: {
   );
 }
 
+/* Stream Toggle */
+function StreamToggle({ stream, onChange }: { stream: Stream; onChange: (s: Stream) => void }) {
+  return (
+    <div className="flex items-center bg-surface-muted rounded-lg p-0.5">
+      {(["MPC", "BIPC"] as Stream[]).map((s) => (
+        <button key={s} onClick={() => onChange(s)}
+          className={cn("px-3 py-1.5 text-xs font-semibold rounded-md transition-colors",
+            stream === s ? "bg-brand text-white shadow-sm" : "text-ink-muted hover:text-ink")}>
+          {s === "BIPC" ? "Bi.P.C" : s}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Dashboard                                                          */
 /* ------------------------------------------------------------------ */
-export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () => void; onKeyFindings: () => void }) {
+interface DashProps {
+  students: Student[]; stream: Stream; examLabel: string;
+  onLogout: () => void; onKeyFindings: () => void; onStreamChange: (s: Stream) => void;
+}
+
+export default function Dashboard({ students, stream, examLabel, onLogout, onKeyFindings, onStreamChange }: DashProps) {
   const [selStates, setSelStates] = useState<string[]>([]);
   const [selCities, setSelCities] = useState<string[]>([]);
   const [selZones, setSelZones] = useState<string[]>([]);
   const [selCampuses, setSelCampuses] = useState<string[]>([]);
   const [feeFilter, setFeeFilter] = useState<number>(1000);
   const [marksLte, setMarksLte] = useState<number>(100);
-  const [jeeLte, setJeeLte] = useState<number>(95);
+  const [examLte, setExamLte] = useState<number>(95);
   const [skipZeroMarks, setSkipZeroMarks] = useState(false);
-  const [skipZeroJEE, setSkipZeroJEE] = useState(true);
+  const [skipZeroExam, setSkipZeroExam] = useState(true);
   const [ignoreMarks, setIgnoreMarks] = useState(false);
-  const [ignoreJEE, setIgnoreJEE] = useState(false);
+  const [ignoreExam, setIgnoreExam] = useState(false);
 
   const [detailGroup, setDetailGroup] = useState<GroupRow | null>(null);
   const [detailPage, setDetailPage] = useState(1);
@@ -175,32 +160,41 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
 
   const fmt = (n: number) => n.toLocaleString("en-IN");
 
+  const isBIPC = stream === "BIPC";
+  const examNotReady = isBIPC; // NEET not yet happened
+
+  // Reset filters on stream change
+  useEffect(() => {
+    setSelStates([]); setSelCities([]); setSelZones([]); setSelCampuses([]);
+    setDetailGroup(null); setDetailStatus("all"); setDetailPage(1);
+    if (isBIPC) { setIgnoreExam(true); setSkipZeroExam(true); }
+    else { setIgnoreExam(false); }
+  }, [stream]);
+
   // Cascading options
-  const states = useMemo(() => [...new Set(students.map((s) => s.STATE))].sort(), []);
+  const states = useMemo(() => [...new Set(students.map((s) => s.STATE))].sort(), [students]);
   const cities = useMemo(() => {
     const pool = selStates.length > 0 ? students.filter((s) => selStates.includes(s.STATE)) : students;
     return [...new Set(pool.map((s) => s.CITY_NAME))].sort();
-  }, [selStates]);
+  }, [students, selStates]);
   const campuses = useMemo(() => {
     let pool = students as Student[];
     if (selStates.length > 0) pool = pool.filter((s) => selStates.includes(s.STATE));
     if (selCities.length > 0) pool = pool.filter((s) => selCities.includes(s.CITY_NAME));
     return [...new Set(pool.map((s) => s.CAMPUS_NAME))].sort();
-  }, [selStates, selCities]);
+  }, [students, selStates, selCities]);
   const zones = useMemo(() => {
     let pool = students as Student[];
     if (selStates.length > 0) pool = pool.filter((s) => selStates.includes(s.STATE));
     if (selCities.length > 0) pool = pool.filter((s) => selCities.includes(s.CITY_NAME));
     if (selCampuses.length > 0) pool = pool.filter((s) => selCampuses.includes(s.CAMPUS_NAME));
     return [...new Set(pool.map((s) => s.ZONE_INCHARGE))].sort();
-  }, [selStates, selCities, selCampuses]);
+  }, [students, selStates, selCities, selCampuses]);
 
-  // Status helpers
   const isLowMarks = (s: Student) => { if (ignoreMarks) return false; if (skipZeroMarks && s.MARKS_AVG === 0) return false; return s.MARKS_AVG <= marksLte; };
-  const isJEEFail = (s: Student) => { if (ignoreJEE) return false; if (skipZeroJEE && s.JEE_MAINS_MARKS === 0) return false; return s.JEE_MAINS_MARKS <= jeeLte; };
-  const getStatus = (s: Student) => (isLowMarks(s) || isJEEFail(s)) ? "Not Met" : "Met";
+  const isExamFail = (s: Student) => { if (ignoreExam) return false; if (skipZeroExam && s.EXAM_MARKS === 0) return false; return s.EXAM_MARKS <= examLte; };
+  const getStatus = (s: Student) => (isLowMarks(s) || isExamFail(s)) ? "Not Met" : "Met";
 
-  // Filtered
   const filtered = useMemo(() => {
     let pool = students as Student[];
     if (selStates.length > 0) pool = pool.filter((s) => selStates.includes(s.STATE));
@@ -211,9 +205,8 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
       pool = feeFilter === 0 ? pool.filter((s) => s.FEE_PAID === 0) : pool.filter((s) => s.FEE_PAID < feeFilter);
     }
     return pool;
-  }, [selStates, selCities, selZones, selCampuses, feeFilter]);
+  }, [students, selStates, selCities, selZones, selCampuses, feeFilter]);
 
-  // Grouped rows: State + City + Campus + Zone Incharge + Program
   const groupRows = useMemo((): GroupRow[] => {
     const map = new Map<string, Student[]>();
     for (const s of filtered) {
@@ -225,30 +218,31 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
       const f = list[0];
       return {
         key, state: f.STATE, city: f.CITY_NAME, campus: f.CAMPUS_NAME, zone: f.ZONE_INCHARGE, program: f.PROGRAM_NAME,
-        total: list.length, lowMarks: list.filter(isLowMarks).length, jeeFail: list.filter(isJEEFail).length,
+        total: list.length, lowMarks: list.filter(isLowMarks).length, examFail: list.filter(isExamFail).length,
         met: list.filter((s) => getStatus(s) === "Met").length, notMet: list.filter((s) => getStatus(s) === "Not Met").length,
         students: list.sort((a, b) => a.FEE_PAID - b.FEE_PAID),
       };
     }).sort((a, b) => b.notMet - a.notMet || b.total - a.total);
-  }, [filtered, marksLte, jeeLte, skipZeroMarks, skipZeroJEE, ignoreMarks, ignoreJEE]);
+  }, [filtered, marksLte, examLte, skipZeroMarks, skipZeroExam, ignoreMarks, ignoreExam]);
 
   const totalRecords = students.length;
   const filteredCount = filtered.length;
   const totalLowMarks = groupRows.reduce((a, g) => a + g.lowMarks, 0);
-  const totalJeeFail = groupRows.reduce((a, g) => a + g.jeeFail, 0);
+  const totalExamFail = groupRows.reduce((a, g) => a + g.examFail, 0);
   const totalMet = groupRows.reduce((a, g) => a + g.met, 0);
   const totalNotMet = groupRows.reduce((a, g) => a + g.notMet, 0);
+  const colCount = 9 + (ignoreMarks ? 0 : 1) + (ignoreExam ? 0 : 1);
 
   const clearFilters = () => {
     setSelStates([]); setSelCities([]); setSelZones([]); setSelCampuses([]);
-    setFeeFilter(1000); setMarksLte(100); setJeeLte(95);
-    setSkipZeroMarks(false); setSkipZeroJEE(true); setIgnoreMarks(false); setIgnoreJEE(false); setDetailGroup(null);
+    setFeeFilter(1000); setMarksLte(100); setExamLte(95);
+    setSkipZeroMarks(false); setSkipZeroExam(true);
+    setIgnoreMarks(false); setIgnoreExam(isBIPC);
+    setDetailGroup(null);
   };
-  const hasFilters = selStates.length > 0 || selCities.length > 0 || selZones.length > 0 || selCampuses.length > 0 || feeFilter !== 1000 || marksLte !== 100 || jeeLte !== 95;
+  const hasFilters = selStates.length > 0 || selCities.length > 0 || selZones.length > 0 || selCampuses.length > 0 || feeFilter !== 1000 || marksLte !== 100 || examLte !== 95;
 
-  const colCount = 9 + (ignoreMarks ? 0 : 1) + (ignoreJEE ? 0 : 1);
-
-  // Detail pagination
+  // Detail
   const detailAllStudents = detailGroup?.students || [];
   const detailStudents = detailStatus === "all" ? detailAllStudents
     : detailStatus === "met" ? detailAllStudents.filter((s) => getStatus(s) === "Met")
@@ -281,7 +275,7 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
             <div className="flex items-center gap-4 text-xs text-ink-muted">
               <span>Total: <strong className="text-brand">{detailGroup.total}</strong></span>
               {!ignoreMarks && <span>Low Marks: <strong className="text-status-warning">{detailGroup.lowMarks}</strong></span>}
-              {!ignoreJEE && <span>JEE Not Met: <strong className="text-status-danger">{detailGroup.jeeFail}</strong></span>}
+              {!ignoreExam && <span>{examLabel} Fail: <strong className="text-status-danger">{detailGroup.examFail}</strong></span>}
               <span>Met: <strong className="text-status-success">{detailGroup.met}</strong></span>
               <span>Not Met: <strong className="text-red-600">{detailGroup.notMet}</strong></span>
             </div>
@@ -293,17 +287,13 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
             <div className="px-4 py-3 border-b border-edge flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-3">
                 <span className="text-xs text-ink-muted">{fmt(detailStudents.length)} students · Page {detailSafePage} of {detailTotalPages}</span>
-                {/* Status filter pills */}
                 <div className="flex items-center bg-surface-muted rounded-lg p-0.5">
                   {(["all", "met", "notmet"] as const).map((s) => (
                     <button key={s} onClick={() => { setDetailStatus(s); setDetailPage(1); }}
                       className={cn("px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors",
                         detailStatus === s
-                          ? s === "notmet" ? "bg-red-50 text-red-600 shadow-sm"
-                            : s === "met" ? "bg-green-50 text-status-success shadow-sm"
-                            : "bg-surface-card text-ink shadow-sm"
-                          : "text-ink-muted hover:text-ink"
-                      )}>
+                          ? s === "notmet" ? "bg-red-50 text-red-600 shadow-sm" : s === "met" ? "bg-green-50 text-status-success shadow-sm" : "bg-surface-card text-ink shadow-sm"
+                          : "text-ink-muted hover:text-ink")}>
                       {s === "all" ? `All (${fmt(detailAllStudents.length)})` : s === "met" ? `Met (${fmt(detailMetCount)})` : `Not Met (${fmt(detailNotMetCount)})`}
                     </button>
                   ))}
@@ -320,41 +310,28 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
 
             <div className="overflow-x-auto scrollbar-thin">
               <table className="w-full text-xs" style={{ minWidth: 900 }}>
-                <colgroup>
-                  <col style={{ width: "14%" }} />
-                  <col style={{ width: "11%" }} />
-                  <col style={{ width: "9%" }} />
-                  <col style={{ width: "9%" }} />
-                  <col style={{ width: "9%" }} />
-                  <col style={{ width: "8%" }} />
-                  <col style={{ width: "8%" }} />
-                  {!ignoreMarks && <col style={{ width: "7%" }} />}
-                  {!ignoreJEE && <col style={{ width: "7%" }} />}
-                  <col style={{ width: "6%" }} />
-                </colgroup>
                 <thead>
                   <tr className="bg-surface-muted border-b border-edge text-[10px] font-semibold text-ink-muted uppercase">
                     <Th tip="Full name of the student" className="text-left">Name</Th>
                     <Th tip="Parent / Guardian name" className="text-left">Parent</Th>
                     <Th tip="Admission number" className="text-left">Adm No</Th>
-                    <Th tip="Student or parent mobile" className="text-left">Mobile</Th>
-                    <Th tip="Course track of the student" className="text-left">Track</Th>
-                    <Th tip="Total course fee before concession" className="text-right">Course Fee</Th>
-                    <Th tip="Actual fee paid after concession" className="text-right">Fee Paid</Th>
+                    <Th tip="Mobile number" className="text-left">Mobile</Th>
+                    <Th tip="Course track" className="text-left">Track</Th>
+                    <Th tip="Course fee before concession" className="text-right">Course Fee</Th>
+                    <Th tip="Fee paid after concession" className="text-right">Fee Paid</Th>
                     {!ignoreMarks && <Th tip={`Average marks — red if ≤ ${marksLte}`} className="text-right">Marks</Th>}
-                    {!ignoreJEE && <Th tip={`JEE Mains — red if ≤ ${jeeLte}`} className="text-right">JEE</Th>}
+                    {!ignoreExam && <Th tip={`${examLabel} score — red if ≤ ${examLte}`} className="text-right">{examLabel}</Th>}
                     <Th tip="Met = meets criteria · Not Met = failed" className="text-center">Status</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {detailPageData.map((s) => {
                     const marksBad = !ignoreMarks && (() => { if (skipZeroMarks && s.MARKS_AVG === 0) return false; return s.MARKS_AVG <= marksLte; })();
-                    const jeeBad = !ignoreJEE && (() => { if (skipZeroJEE && s.JEE_MAINS_MARKS === 0) return false; return s.JEE_MAINS_MARKS <= jeeLte; })();
+                    const examBad = !ignoreExam && (() => { if (skipZeroExam && s.EXAM_MARKS === 0) return false; return s.EXAM_MARKS <= examLte; })();
                     const status = getStatus(s);
-                    const totalCols = 7 + (ignoreMarks ? 0 : 1) + (ignoreJEE ? 0 : 1) + 1;
+                    const totalCols = 7 + (ignoreMarks ? 0 : 1) + (ignoreExam ? 0 : 1) + 1;
                     return (
                       <React.Fragment key={s.ADM_NO}>
-                        {/* Row 1: Main data */}
                         <tr className="hover:bg-surface-muted/40">
                           <td className="px-3 pt-2.5 pb-0.5 font-medium text-ink whitespace-nowrap">{s.NAME} {s.SURNAME}</td>
                           <td className="px-3 pt-2.5 pb-0.5 text-ink whitespace-nowrap">{s.PARENT_NAME || "—"}</td>
@@ -364,13 +341,12 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
                           <td className="px-3 pt-2.5 pb-0.5 text-right tabular-nums text-ink">{fmt(s.COURSE_FEE)}</td>
                           <td className="px-3 pt-2.5 pb-0.5 text-right tabular-nums font-medium text-ink">{fmt(s.FEE_PAID)}</td>
                           {!ignoreMarks && <td className={cn("px-3 pt-2.5 pb-0.5 text-right tabular-nums font-medium", marksBad ? "text-status-danger" : "text-ink")}>{s.MARKS_AVG}</td>}
-                          {!ignoreJEE && <td className={cn("px-3 pt-2.5 pb-0.5 text-right tabular-nums font-medium", jeeBad ? "text-status-danger" : "text-ink")}>{s.JEE_MAINS_MARKS}</td>}
+                          {!ignoreExam && <td className={cn("px-3 pt-2.5 pb-0.5 text-right tabular-nums font-medium", examBad ? "text-status-danger" : "text-ink")}>{s.EXAM_MARKS}</td>}
                           <td className="px-3 pt-2.5 pb-0.5 text-center">
                             <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
                               status === "Not Met" ? "bg-red-50 text-red-600" : "bg-green-50 text-status-success")}>{status}</span>
                           </td>
                         </tr>
-                        {/* Row 2: Reason, Description, Sponsored */}
                         <tr className="border-b border-edge/30 hover:bg-surface-muted/40">
                           <td colSpan={totalCols} className="px-3 pt-0 pb-2.5">
                             <span className="text-[10px] text-ink-muted">
@@ -388,9 +364,7 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
             </div>
 
             <div className="px-4 py-3 border-t border-edge flex items-center justify-between">
-              <span className="text-[11px] text-ink-muted">
-                Showing {detailStudents.length === 0 ? 0 : (detailSafePage - 1) * PAGE_SIZE + 1}–{Math.min(detailSafePage * PAGE_SIZE, detailStudents.length)} of {fmt(detailStudents.length)}
-              </span>
+              <span className="text-[11px] text-ink-muted">Showing {detailStudents.length === 0 ? 0 : (detailSafePage - 1) * PAGE_SIZE + 1}–{Math.min(detailSafePage * PAGE_SIZE, detailStudents.length)} of {fmt(detailStudents.length)}</span>
               <div className="flex items-center gap-1">
                 <button onClick={() => setDetailPage(1)} disabled={detailSafePage <= 1} className="px-2 py-1 text-[11px] rounded hover:bg-surface-muted disabled:opacity-30 text-ink-muted">First</button>
                 <button onClick={() => setDetailPage((p) => Math.max(1, p - 1))} disabled={detailSafePage <= 1} className="p-1 rounded hover:bg-surface-muted disabled:opacity-30"><ChevronLeft size={14} className="text-ink" /></button>
@@ -414,12 +388,11 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={scLogo} alt="SC" className="w-8 h-8 object-contain" />
-            <h1 className="font-display text-base font-bold text-ink leading-none">Year End Concession Review for MPC Students (2025-26)</h1>
+            <h1 className="font-display text-base font-bold text-ink leading-none">Year End Concession Review (2025-26)</h1>
+            <StreamToggle stream={stream} onChange={onStreamChange} />
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={onKeyFindings} className="flex items-center gap-1.5 text-xs font-medium text-brand hover:underline transition-colors">
-              Key Findings
-            </button>
+            <button onClick={onKeyFindings} className="text-xs font-medium text-brand hover:underline">Key Findings</button>
             <button onClick={onLogout} className="flex items-center gap-1.5 text-xs text-ink-muted hover:text-status-danger transition-colors">
               <LogOut size={14} /> Sign out
             </button>
@@ -428,17 +401,22 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
       </header>
 
       <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-5 space-y-4">
+        {/* DATA CRITERIA */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
           <div className="flex items-start gap-2">
             <FileText size={16} className="text-blue-500 mt-0.5 shrink-0" />
             <div className="text-xs text-blue-800 leading-relaxed space-y-0.5">
-              <p className="font-semibold text-blue-900 text-[13px]">Data Criteria</p>
+              <p className="font-semibold text-blue-900 text-[13px]">Data Criteria — {stream === "MPC" ? "MPC" : "Bi.P.C"} Students</p>
               <p>Class Group = <strong>Inter 2</strong> · Student Status = <strong>Current</strong> · Fee Paid &lt; <strong>10,000</strong></p>
-              <p className="text-blue-600 mt-1">Only active Inter-2 students who received high concessions (very low fee paid).</p>
+              <p className="text-blue-600 mt-1">
+                Only active Inter-2 {stream === "MPC" ? "MPC" : "Bi.P.C"} students who received high concessions.
+                {examNotReady && <> <strong>Note:</strong> NEET exam is yet to happen — NEET marks will be populated after results.</>}
+              </p>
             </div>
           </div>
         </div>
 
+        {/* TOTALS */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="bg-surface-card border border-edge rounded-xl px-4 py-3 flex items-center gap-2">
             <Users size={16} className="text-brand" />
@@ -450,6 +428,7 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
           </div>
         </div>
 
+        {/* FILTERS */}
         <section className="bg-surface-card border border-edge rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Filters</h2>
@@ -459,7 +438,7 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
             <MultiSelect selected={selStates} onChange={(v) => { setSelStates(v); setSelCities([]); setSelCampuses([]); setSelZones([]); }} options={states} placeholder="State" />
             <MultiSelect selected={selCities} onChange={(v) => { setSelCities(v); setSelCampuses([]); setSelZones([]); }} options={cities} placeholder="City" searchable />
             <MultiSelect selected={selCampuses} onChange={(v) => { setSelCampuses(v); setSelZones([]); }} options={campuses} placeholder="Campus" searchable />
-            <MultiSelect selected={selZones} onChange={(v) => { setSelZones(v); }} options={zones} placeholder="Zone Incharge" searchable />
+            <MultiSelect selected={selZones} onChange={setSelZones} options={zones} placeholder="Zone Incharge" searchable />
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
@@ -476,9 +455,9 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
                 className="w-16 bg-surface-card border border-edge rounded-lg px-2 py-1.5 text-xs text-ink outline-none focus:border-brand tabular-nums text-center disabled:cursor-not-allowed" />
             </div>
             <div className="h-5 w-px bg-edge" />
-            <div className={cn("flex items-center gap-2", ignoreJEE && "opacity-40")}>
-              <span className="text-xs text-ink-muted whitespace-nowrap">JEE Mains ≤</span>
-              <input type="number" value={jeeLte} min={0} max={100} disabled={ignoreJEE} onChange={(e) => setJeeLte(Number(e.target.value) || 0)}
+            <div className={cn("flex items-center gap-2", (ignoreExam || examNotReady) && "opacity-40")}>
+              <span className="text-xs text-ink-muted whitespace-nowrap">{examLabel} ≤</span>
+              <input type="number" value={examLte} min={0} max={stream === "MPC" ? 300 : 720} disabled={ignoreExam || examNotReady} onChange={(e) => setExamLte(Number(e.target.value) || 0)}
                 className="w-16 bg-surface-card border border-edge rounded-lg px-2 py-1.5 text-xs text-ink outline-none focus:border-brand tabular-nums text-center disabled:cursor-not-allowed" />
             </div>
           </div>
@@ -487,35 +466,41 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
               <input type="checkbox" checked={ignoreMarks} onChange={(e) => setIgnoreMarks(e.target.checked)} className="w-4 h-4 rounded accent-[hsl(14,80%,42%)]" />
               <span className="text-xs text-ink-muted"><strong className="text-ink">Ignore Marks Avg</strong> completely</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={ignoreJEE} onChange={(e) => setIgnoreJEE(e.target.checked)} className="w-4 h-4 rounded accent-[hsl(14,80%,42%)]" />
-              <span className="text-xs text-ink-muted"><strong className="text-ink">Ignore JEE Mains</strong> completely</span>
-            </label>
+            {!examNotReady && (
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={ignoreExam} onChange={(e) => setIgnoreExam(e.target.checked)} className="w-4 h-4 rounded accent-[hsl(14,80%,42%)]" />
+                <span className="text-xs text-ink-muted"><strong className="text-ink">Ignore {examLabel}</strong> completely</span>
+              </label>
+            )}
+            {examNotReady && (
+              <span className="text-xs text-ink-light italic">NEET marks will be populated after exam results</span>
+            )}
             <div className="h-5 w-px bg-edge" />
             <label className={cn("flex items-center gap-2 cursor-pointer select-none", ignoreMarks && "opacity-40")}>
               <input type="checkbox" checked={skipZeroMarks} disabled={ignoreMarks} onChange={(e) => setSkipZeroMarks(e.target.checked)} className="w-4 h-4 rounded accent-[hsl(14,80%,42%)] disabled:cursor-not-allowed" />
-              <span className="text-xs text-ink-muted">Skip <strong className="text-ink">0 Marks</strong> (didn't take exam)</span>
+              <span className="text-xs text-ink-muted">Skip <strong className="text-ink">0 Marks</strong></span>
             </label>
-            <label className={cn("flex items-center gap-2 cursor-pointer select-none", ignoreJEE && "opacity-40")}>
-              <input type="checkbox" checked={skipZeroJEE} disabled={ignoreJEE} onChange={(e) => setSkipZeroJEE(e.target.checked)} className="w-4 h-4 rounded accent-[hsl(14,80%,42%)] disabled:cursor-not-allowed" />
-              <span className="text-xs text-ink-muted">Skip <strong className="text-ink">0 JEE</strong> (didn't appear)</span>
-            </label>
+            {!examNotReady && (
+              <label className={cn("flex items-center gap-2 cursor-pointer select-none", ignoreExam && "opacity-40")}>
+                <input type="checkbox" checked={skipZeroExam} disabled={ignoreExam} onChange={(e) => setSkipZeroExam(e.target.checked)} className="w-4 h-4 rounded accent-[hsl(14,80%,42%)] disabled:cursor-not-allowed" />
+                <span className="text-xs text-ink-muted">Skip <strong className="text-ink">0 {examLabel}</strong></span>
+              </label>
+            )}
           </div>
         </section>
 
+        {/* SUMMARY */}
         <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <StatCard label="Total" value={filteredCount} icon={Users} color="bg-brand"
-            tooltip="Total number of concession students matching your location and fee filters. These are students with very low fee paid relative to course fee." />
+          <StatCard label="Total" value={filteredCount} icon={Users} color="bg-brand" tooltip="Total concession students matching filters" />
           {!ignoreMarks && <StatCard label="Low Marks" value={totalLowMarks} icon={AlertTriangle} color="bg-status-warning"
-            tooltip={`Students whose Marks Average is ≤ ${marksLte}. These students received high concession but are performing below the academic threshold.${skipZeroMarks ? " Students with 0 marks (didn't take exam) are excluded." : ""}`} />}
-          {!ignoreJEE && <StatCard label="JEE Not Met" value={totalJeeFail} icon={GraduationCap} color="bg-status-danger"
-            tooltip={`Students whose JEE Mains score is ≤ ${jeeLte}. These students received concession but did not meet the JEE performance criteria.${skipZeroJEE ? " Students with 0 JEE marks (didn't appear) are excluded." : ""}`} />}
-          <StatCard label="Met" value={totalMet} icon={Users} color="bg-status-success"
-            tooltip="Students who meet all active academic criteria (marks and/or JEE thresholds). Their concession appears justified by performance." />
-          <StatCard label="Not Met" value={totalNotMet} icon={AlertTriangle} color="bg-red-600"
-            tooltip="Students who failed to meet one or more academic criteria. These are high-concession students with low academic performance — priority for review." />
+            tooltip={`Students with Marks Avg ≤ ${marksLte}${skipZeroMarks ? " (excl. zeros)" : ""}`} />}
+          {!ignoreExam && <StatCard label={`${examLabel} Not Met`} value={totalExamFail} icon={GraduationCap} color="bg-status-danger"
+            tooltip={`Students with ${examLabel} ≤ ${examLte}${skipZeroExam ? " (excl. zeros)" : ""}`} />}
+          <StatCard label="Met" value={totalMet} icon={Users} color="bg-status-success" tooltip="Students meeting all active academic criteria" />
+          <StatCard label="Not Met" value={totalNotMet} icon={AlertTriangle} color="bg-red-600" tooltip="Students failing one or more criteria — priority for review" />
         </section>
 
+        {/* MAIN TABLE */}
         <section className="bg-surface-card border border-edge rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-edge">
             <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
@@ -527,16 +512,16 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
               <thead>
                 <tr className="bg-surface-muted border-b border-edge">
                   <th className="w-8 px-2"></th>
-                  <Th tip={COL_TIPS.state} className="text-left">State</Th>
-                  <Th tip={COL_TIPS.city} className="text-left">City</Th>
-                  <Th tip={COL_TIPS.campus} className="text-left">Campus</Th>
-                  <Th tip={COL_TIPS.zone} className="text-left">Zone Incharge</Th>
-                  <Th tip={COL_TIPS.program} className="text-left">Program</Th>
-                  <Th tip={COL_TIPS.total} className="text-center">Total</Th>
-                  {!ignoreMarks && <Th tip={COL_TIPS.lowMarks} className="text-center">Low Marks</Th>}
-                  {!ignoreJEE && <Th tip={COL_TIPS.jeeFail} className="text-center">JEE Not Met</Th>}
-                  <Th tip={COL_TIPS.met} className="text-center">Met</Th>
-                  <Th tip={COL_TIPS.notMet} className="text-center">Not Met</Th>
+                  <Th tip="State where the campus is located" className="text-left">State</Th>
+                  <Th tip="City of the campus" className="text-left">City</Th>
+                  <Th tip="Campus name" className="text-left">Campus</Th>
+                  <Th tip="Zone Incharge responsible" className="text-left">Zone Incharge</Th>
+                  <Th tip="Student program" className="text-left">Program</Th>
+                  <Th tip="Total concession students" className="text-center">Total</Th>
+                  {!ignoreMarks && <Th tip="Students with low marks" className="text-center">Low Marks</Th>}
+                  {!ignoreExam && <Th tip={`Students failing ${examLabel}`} className="text-center">{examLabel} Fail</Th>}
+                  <Th tip="Students meeting criteria" className="text-center">Met</Th>
+                  <Th tip="Students failing criteria" className="text-center">Not Met</Th>
                 </tr>
               </thead>
               <tbody>
@@ -544,8 +529,7 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
                   <tr><td colSpan={colCount} className="text-center py-12 text-ink-muted text-sm">No data matches the current filters.</td></tr>
                 )}
                 {groupRows.map((gr) => (
-                  <tr key={gr.key}
-                    onClick={() => { setDetailGroup(gr); setDetailPage(1); setDetailStatus("all"); }}
+                  <tr key={gr.key} onClick={() => { setDetailGroup(gr); setDetailPage(1); setDetailStatus("all"); }}
                     className="border-b border-edge/50 cursor-pointer transition-colors hover:bg-surface-muted/50 group">
                     <td className="px-2 text-center"><ChevronRight size={14} className="text-ink-light group-hover:text-brand transition-colors" /></td>
                     <td className="px-3 py-2.5 text-xs text-ink">{gr.state}</td>
@@ -555,7 +539,7 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
                     <td className="px-3 py-2.5 text-xs text-ink">{gr.program}</td>
                     <td className="px-3 py-2.5 text-center"><span className="font-bold text-brand">{gr.total}</span></td>
                     {!ignoreMarks && <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.lowMarks > 0 ? "text-status-warning" : "text-ink-light")}>{gr.lowMarks}</span></td>}
-                    {!ignoreJEE && <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.jeeFail > 0 ? "text-status-danger" : "text-ink-light")}>{gr.jeeFail}</span></td>}
+                    {!ignoreExam && <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.examFail > 0 ? "text-status-danger" : "text-ink-light")}>{gr.examFail}</span></td>}
                     <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.met > 0 ? "text-status-success" : "text-ink-light")}>{gr.met}</span></td>
                     <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.notMet > 0 ? "text-red-600" : "text-ink-light")}>{gr.notMet}</span></td>
                   </tr>
