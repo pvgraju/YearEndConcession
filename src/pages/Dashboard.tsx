@@ -170,6 +170,7 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   const [detailGroup, setDetailGroup] = useState<GroupRow | null>(null);
   const [detailPage, setDetailPage] = useState(1);
+  const [detailStatus, setDetailStatus] = useState<"all" | "met" | "notmet">("all");
 
   const fmt = (n: number) => n.toLocaleString("en-IN");
 
@@ -247,7 +248,12 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
   const colCount = 9 + (ignoreMarks ? 0 : 1) + (ignoreJEE ? 0 : 1);
 
   // Detail pagination
-  const detailStudents = detailGroup?.students || [];
+  const detailAllStudents = detailGroup?.students || [];
+  const detailStudents = detailStatus === "all" ? detailAllStudents
+    : detailStatus === "met" ? detailAllStudents.filter((s) => getStatus(s) === "Met")
+    : detailAllStudents.filter((s) => getStatus(s) === "Not Met");
+  const detailMetCount = detailAllStudents.filter((s) => getStatus(s) === "Met").length;
+  const detailNotMetCount = detailAllStudents.filter((s) => getStatus(s) === "Not Met").length;
   const detailTotalPages = Math.max(1, Math.ceil(detailStudents.length / PAGE_SIZE));
   const detailSafePage = Math.min(detailPage, detailTotalPages);
   const detailPageData = detailStudents.slice((detailSafePage - 1) * PAGE_SIZE, detailSafePage * PAGE_SIZE);
@@ -281,10 +287,40 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
           </div>
         </header>
 
-        <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-5">
+        <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-5 space-y-4">
+          {/* Same data criteria */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+            <div className="flex items-start gap-2">
+              <FileText size={16} className="text-blue-500 mt-0.5 shrink-0" />
+              <div className="text-xs text-blue-800 leading-relaxed space-y-0.5">
+                <p className="font-semibold text-blue-900 text-[13px]">Data Criteria</p>
+                <p>Academic Year = <strong>2025-26</strong> · Class Group = <strong>Inter 2</strong> · Group = <strong>M.P.C</strong></p>
+                <p>Student Status = <strong>Current</strong> · Fee Paid &lt; <strong>10,000</strong></p>
+                <p className="text-blue-600 mt-1">Only active MPC Inter-2 students who received high concessions (very low fee paid) in academic year 2025-26.</p>
+              </div>
+            </div>
+          </div>
+
           <section className="bg-surface-card border border-edge rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-edge flex items-center justify-between">
-              <span className="text-xs text-ink-muted">{fmt(detailStudents.length)} students · Page {detailSafePage} of {detailTotalPages}</span>
+            <div className="px-4 py-3 border-b border-edge flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-ink-muted">{fmt(detailStudents.length)} students · Page {detailSafePage} of {detailTotalPages}</span>
+                {/* Status filter pills */}
+                <div className="flex items-center bg-surface-muted rounded-lg p-0.5">
+                  {(["all", "met", "notmet"] as const).map((s) => (
+                    <button key={s} onClick={() => { setDetailStatus(s); setDetailPage(1); }}
+                      className={cn("px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors",
+                        detailStatus === s
+                          ? s === "notmet" ? "bg-red-50 text-red-600 shadow-sm"
+                            : s === "met" ? "bg-green-50 text-status-success shadow-sm"
+                            : "bg-surface-card text-ink shadow-sm"
+                          : "text-ink-muted hover:text-ink"
+                      )}>
+                      {s === "all" ? `All (${fmt(detailAllStudents.length)})` : s === "met" ? `Met (${fmt(detailMetCount)})` : `Not Met (${fmt(detailNotMetCount)})`}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex items-center gap-1">
                 <button onClick={() => setDetailPage(1)} disabled={detailSafePage <= 1} className="px-2 py-1 text-[11px] rounded hover:bg-surface-muted disabled:opacity-30 text-ink-muted">First</button>
                 <button onClick={() => setDetailPage((p) => Math.max(1, p - 1))} disabled={detailSafePage <= 1} className="p-1 rounded hover:bg-surface-muted disabled:opacity-30"><ChevronLeft size={14} className="text-ink" /></button>
@@ -493,7 +529,7 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
                 )}
                 {groupRows.map((gr) => (
                   <tr key={gr.key}
-                    onClick={() => { setDetailGroup(gr); setDetailPage(1); }}
+                    onClick={() => { setDetailGroup(gr); setDetailPage(1); setDetailStatus("all"); }}
                     className="border-b border-edge/50 cursor-pointer transition-colors hover:bg-surface-muted/50 group">
                     <td className="px-2 text-center"><ChevronRight size={14} className="text-ink-light group-hover:text-brand transition-colors" /></td>
                     <td className="px-3 py-2.5 text-xs text-ink">{gr.state}</td>
