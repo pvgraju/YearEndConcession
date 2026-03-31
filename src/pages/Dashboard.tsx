@@ -10,7 +10,8 @@ import { cn } from "@/lib/cn";
 interface Student {
   STATE: string; CITY_NAME: string; CAMPUS_NAME: string; CAMPUS_TYPE: string;
   ZONE_INCHARGE: string; ADM_NO: number; NAME: string; SURNAME: string;
-  MOBILE_NO: number | string; STREAM: string; PROGRAM_NAME: string;
+  PARENT_NAME: string; MOBILE_NO: number | string; STREAM: string; PROGRAM_NAME: string;
+  COURSE_TRACK: string;
   MARKS_AVG: number; JEE_MAINS_MARKS: number; COURSE_FEE: number;
   FEE_PAID: number; SPONSORED_BY: string; REASON: string; REASON_DESCRIPTION: string;
 }
@@ -322,8 +323,10 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
                 <thead>
                   <tr className="bg-surface-muted border-b border-edge text-[10px] font-semibold text-ink-muted uppercase">
                     <Th tip="Full name of the student" className="text-left">Name</Th>
+                    <Th tip="Parent / Guardian name" className="text-left">Parent Name</Th>
                     <Th tip="Admission number — unique student ID" className="text-left">Adm No</Th>
                     <Th tip="Student or parent mobile number" className="text-left">Mobile</Th>
+                    <Th tip="Course track of the student" className="text-left">Course Track</Th>
                     <Th tip="Total course fee before concession" className="text-right">Course Fee</Th>
                     <Th tip="Actual fee paid by the student after concession" className="text-right">Fee Paid</Th>
                     {!ignoreMarks && <Th tip={`Average marks scored — red if ≤ ${marksLte}`} className="text-right">Marks Avg</Th>}
@@ -342,8 +345,10 @@ export default function Dashboard({ onLogout, onKeyFindings }: { onLogout: () =>
                     return (
                       <tr key={s.ADM_NO} className="border-b border-edge/30 hover:bg-surface-muted/40">
                         <td className="px-3 py-2.5 font-medium text-ink whitespace-nowrap">{s.NAME} {s.SURNAME}</td>
+                        <td className="px-3 py-2.5 text-ink">{s.PARENT_NAME || "—"}</td>
                         <td className="px-3 py-2.5 text-ink-muted tabular-nums">{s.ADM_NO}</td>
                         <td className="px-3 py-2.5 text-ink-muted tabular-nums">{s.MOBILE_NO}</td>
+                        <td className="px-3 py-2.5 text-ink text-xs">{s.COURSE_TRACK || "—"}</td>
                         <td className="px-3 py-2.5 text-right tabular-nums text-ink">{fmt(s.COURSE_FEE)}</td>
                         <td className="px-3 py-2.5 text-right tabular-nums font-medium text-ink">{fmt(s.FEE_PAID)}</td>
                         {!ignoreMarks && <td className={cn("px-3 py-2.5 text-right tabular-nums font-medium", marksBad ? "text-status-danger" : "text-ink")}>{s.MARKS_AVG}</td>}

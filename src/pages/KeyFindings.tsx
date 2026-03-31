@@ -10,7 +10,8 @@ import rawData from "@/data/students.json";
 interface Student {
   STATE: string; CITY_NAME: string; CAMPUS_NAME: string; CAMPUS_TYPE: string;
   ZONE_INCHARGE: string; ADM_NO: number; NAME: string; SURNAME: string;
-  MOBILE_NO: number | string; STREAM: string; PROGRAM_NAME: string;
+  PARENT_NAME: string; MOBILE_NO: number | string; STREAM: string; PROGRAM_NAME: string;
+  COURSE_TRACK: string;
   MARKS_AVG: number; JEE_MAINS_MARKS: number; COURSE_FEE: number;
   FEE_PAID: number; SPONSORED_BY: string; REASON: string; REASON_DESCRIPTION: string;
 }
