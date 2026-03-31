@@ -128,11 +128,8 @@ function MultiSelect({ selected, onChange, options, placeholder, searchable }: {
 /* ------------------------------------------------------------------ */
 function Th({ children, tip, className: cls }: { children: React.ReactNode; tip: string; className?: string }) {
   return (
-    <th className={cn("px-3 py-2.5 text-[11px] font-semibold text-ink-muted uppercase tracking-wider relative group", cls)}>
+    <th title={tip} className={cn("px-3 py-2.5 text-[11px] font-semibold text-ink-muted uppercase tracking-wider cursor-help", cls)}>
       {children}
-      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-lg bg-ink text-white text-[10px] leading-snug p-2 opacity-0 group-hover:opacity-100 transition-opacity z-50 text-center shadow-lg normal-case tracking-normal font-normal">
-        {tip}
-      </div>
     </th>
   );
 }
@@ -501,7 +498,7 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
                     <td className="px-2 text-center"><ChevronRight size={14} className="text-ink-light group-hover:text-brand transition-colors" /></td>
                     <td className="px-3 py-2.5 text-xs text-ink">{gr.state}</td>
                     <td className="px-3 py-2.5 text-xs text-ink font-medium">{gr.city}</td>
-                    <td className="px-3 py-2.5 text-xs text-ink max-w-[180px] truncate">{gr.campus}</td>
+                    <td className="px-3 py-2.5 text-xs text-ink max-w-[180px] truncate" title={gr.campus}>{gr.campus}</td>
                     <td className="px-3 py-2.5 text-xs text-ink">{gr.zone}</td>
                     <td className="px-3 py-2.5 text-xs text-ink">{gr.program}</td>
                     <td className="px-3 py-2.5 text-center"><span className="font-bold text-brand">{gr.total}</span></td>
