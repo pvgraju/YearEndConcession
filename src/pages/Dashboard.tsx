@@ -435,10 +435,14 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
           <div className="flex items-start gap-2">
             <FileText size={16} className="text-blue-500 mt-0.5 shrink-0" />
             <div className="text-xs text-blue-800 leading-relaxed">
-              <p className="font-semibold text-blue-900 text-[13px]">{stream === "MPC" ? "MPC" : "Bi.P.C"} Students</p>
-              <p>Inter 2 · Current · Fee Paid &lt; 10,000
-                {examNotReady && <span className="ml-2 text-amber-700">· NEET marks will be populated after results</span>}
+              <p className="font-semibold text-blue-900 text-[13px]">{stream === "MPC" ? "MPC" : "Bi.P.C"} Students — Fixed Criteria</p>
+              <p>Inter 2 · Current · Fee Paid &lt; 10,000</p>
+              <p className="mt-0.5">
+                <strong>Your Filters:</strong> Fee Paid &lt; {fmt(feeFilter === Infinity ? 10000 : feeFilter)}
+                {!ignoreMarks && <> · Avg Marks ≤ {marksLte}</>}
+                {!ignoreExam && <> · {examLabel} ≤ {examLte}</>}
               </p>
+              {examNotReady && <p className="text-amber-700 mt-0.5">NEET marks will be populated after results</p>}
             </div>
           </div>
         </div>
@@ -507,11 +511,16 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
         </section>
 
         <section className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <StatCard label="Total" value={filteredCount} icon={Users} color="bg-brand" tooltip={`${fmt(filteredCount)} out of ${fmt(students.length)} total students match your current location and fee filters.`} />
-          {!ignoreMarks && <StatCard label={`Avg Marks ≤ ${marksLte}`} value={totalLowMarks} icon={AlertTriangle} color="bg-status-warning" tooltip={`${fmt(totalLowMarks)} / ${fmt(filteredCount)} students have Avg Marks ≤ ${marksLte}. These students got high concessions but scored low in academics.`} />}
-          {!ignoreExam && <StatCard label={`${examLabel} ≤ ${examLte}`} value={totalExamFail} icon={GraduationCap} color="bg-status-danger" tooltip={`${fmt(totalExamFail)} / ${fmt(filteredCount)} students have ${examLabel} score ≤ ${examLte}. They received concession but did not meet the ${examLabel} threshold.`} />}
-          <StatCard label="Met" value={totalMet} icon={Users} color="bg-status-success" tooltip={`${fmt(totalMet)} / ${fmt(filteredCount)} students are meeting all the active academic criteria. Their concession appears justified by their performance.`} />
-          <StatCard label="Not Met" value={totalNotMet} icon={AlertTriangle} color="bg-red-600" tooltip={`${fmt(totalNotMet)} / ${fmt(filteredCount)} students failed to meet one or more academic criteria (Avg Marks or ${examLabel}). These are high-concession students with low performance — priority for review.`} />
+          <StatCard label="Total" value={filteredCount} icon={Users} color="bg-brand"
+            tooltip={`${fmt(filteredCount)} out of ${fmt(students.length)} total students where Fee Paid < ${fmt(feeFilter === Infinity ? 10000 : feeFilter)}. These students received high concessions (paid very little compared to their course fee).`} />
+          {!ignoreMarks && <StatCard label={`Avg Marks ≤ ${marksLte}`} value={totalLowMarks} icon={AlertTriangle} color="bg-status-warning"
+            tooltip={`${fmt(totalLowMarks)} out of ${fmt(filteredCount)} students scored Avg Marks ≤ ${marksLte}. They got concession but their academic performance is low.`} />}
+          {!ignoreExam && <StatCard label={`${examLabel} Score ≤ ${examLte}`} value={totalExamFail} icon={GraduationCap} color="bg-status-danger"
+            tooltip={`${fmt(totalExamFail)} out of ${fmt(filteredCount)} students scored ${examLabel} ≤ ${examLte}. They got concession but their ${examLabel} performance is below expected.`} />}
+          <StatCard label="Met" value={totalMet} icon={Users} color="bg-status-success"
+            tooltip={`${fmt(totalMet)} out of ${fmt(filteredCount)} students have Avg Marks > ${marksLte}${!ignoreExam ? ` AND ${examLabel} Score > ${examLte}` : ""}. Fee Paid < ${fmt(feeFilter === Infinity ? 10000 : feeFilter)} but their academics justify the concession.`} />
+          <StatCard label="Not Met" value={totalNotMet} icon={AlertTriangle} color="bg-red-600"
+            tooltip={`${fmt(totalNotMet)} out of ${fmt(filteredCount)} students have Avg Marks ≤ ${marksLte}${!ignoreExam ? ` OR ${examLabel} Score ≤ ${examLte}` : ""}. Fee Paid < ${fmt(feeFilter === Infinity ? 10000 : feeFilter)} and their academics do not justify the concession given.`} />
         </section>
 
         {(() => {
