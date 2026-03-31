@@ -170,6 +170,7 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
   const [detailGroup, setDetailGroup] = useState<GroupRow | null>(null);
   const [detailPage, setDetailPage] = useState(1);
   const [detailStatus, setDetailStatus] = useState<"all" | "met" | "notmet">("all");
+  const [homePage, setHomePage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey>("notMet");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [dSortKey, setDSortKey] = useState<DetailSortKey>("FEE_PAID");
@@ -189,7 +190,7 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
     setSelStates([]); setSelCities([]); setSelZones([]); setSelCampuses([]);
     setFeeFilter(1000); setMarksLte(100); setExamLte(95);
     setSkipZeroMarks(false); setSkipZeroExam(true); setIgnoreMarks(false); setIgnoreExam(isBIPC);
-    setDetailGroup(null); setDetailStatus("all");
+    setDetailGroup(null); setDetailStatus("all"); setHomePage(1);
   };
 
   // Options
@@ -261,6 +262,7 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
   const toggleSort = (k: string) => {
     if (sortKey === k) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortKey(k as SortKey); setSortDir("desc"); }
+    setHomePage(1);
   };
   const toggleDSort = (k: string) => {
     if (dSortKey === k) setDSortDir(d => d === "asc" ? "desc" : "asc");
@@ -333,9 +335,9 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
                 <button onClick={() => setDetailPage(dPages)} disabled={dPage >= dPages} className="px-2 py-1 text-[11px] rounded hover:bg-surface-muted disabled:opacity-30 text-ink-muted">Last</button>
               </div>
             </div>
-            <div className="overflow-auto scrollbar-thin" style={{ maxHeight: "calc(100vh - 160px)" }}>
+            <div className="overflow-x-auto scrollbar-thin">
               <table className="w-full text-[13px]">
-                <thead className="sticky top-0 z-10">
+                <thead>
                   <tr className="bg-surface-muted border-b border-edge">
                     <SortTh tip="Student name" sortKey="NAME" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-left">Name</SortTh>
                     <SortTh tip="Parent / Guardian" sortKey="PARENT_NAME" currentKey={dSortKey} dir={dSortDir} onSort={toggleDSort} className="text-left">Parent</SortTh>
@@ -374,6 +376,19 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
                   })}
                 </tbody>
               </table>
+            </div>
+            {/* Bottom pagination */}
+            <div className="px-4 py-3 border-t border-edge flex items-center justify-between">
+              <span className="text-[11px] text-ink-muted">
+                Showing {detailSorted.length === 0 ? 0 : (dPage - 1) * PAGE_SIZE + 1}–{Math.min(dPage * PAGE_SIZE, detailSorted.length)} of {fmt(detailSorted.length)}
+              </span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setDetailPage(1)} disabled={dPage <= 1} className="px-2 py-1 text-[11px] rounded hover:bg-surface-muted disabled:opacity-30 text-ink-muted">First</button>
+                <button onClick={() => setDetailPage(p => Math.max(1, p - 1))} disabled={dPage <= 1} className="p-1 rounded hover:bg-surface-muted disabled:opacity-30"><ChevronLeft size={14} /></button>
+                <span className="text-xs text-ink font-medium px-2">{dPage} / {dPages}</span>
+                <button onClick={() => setDetailPage(p => Math.min(dPages, p + 1))} disabled={dPage >= dPages} className="p-1 rounded hover:bg-surface-muted disabled:opacity-30"><ChevronRight size={14} /></button>
+                <button onClick={() => setDetailPage(dPages)} disabled={dPage >= dPages} className="px-2 py-1 text-[11px] rounded hover:bg-surface-muted disabled:opacity-30 text-ink-muted">Last</button>
+              </div>
             </div>
           </section>
         </main>
@@ -484,51 +499,68 @@ export default function Dashboard({ students, stream, examLabel, onLogout, onKey
           <StatCard label="Not Met" value={totalNotMet} icon={AlertTriangle} color="bg-red-600" tooltip="Students failing criteria" />
         </section>
 
-        <section className="bg-surface-card border border-edge rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-edge">
-            <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              Breakdown <span className="font-normal normal-case text-ink-light">({groupRows.length} groups · {fmt(filteredCount)} students · click to view)</span>
-            </h2>
-          </div>
-          <div className="overflow-x-auto scrollbar-thin">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="bg-surface-muted border-b border-edge">
-                  <th className="w-7 px-2"></th>
-                  <SortTh tip="State" sortKey="state" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-left">State</SortTh>
-                  <SortTh tip="City" sortKey="city" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-left">City</SortTh>
-                  <SortTh tip="Campus" sortKey="campus" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-left">Campus</SortTh>
-                  <SortTh tip="Zone Incharge" sortKey="zone" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-left">Zone Incharge</SortTh>
-                  <SortTh tip="Program" sortKey="program" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-left">Program</SortTh>
-                  <SortTh tip="Total students" sortKey="total" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-center">Total</SortTh>
-                  {!ignoreMarks && <SortTh tip="Avg Marks below cutoff" sortKey="lowMarks" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-center">Avg Marks</SortTh>}
-                  {!ignoreExam && <SortTh tip={`${examLabel} below cutoff`} sortKey="examFail" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-center">{examLabel}</SortTh>}
-                  <SortTh tip="Met criteria" sortKey="met" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-center">Met</SortTh>
-                  <SortTh tip="Failed criteria" sortKey="notMet" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-center">Not Met</SortTh>
-                </tr>
-              </thead>
-              <tbody>
-                {groupRows.length === 0 && <tr><td colSpan={colCount} className="text-center py-12 text-ink-muted">No data matches the current filters.</td></tr>}
-                {groupRows.map((gr) => (
-                  <tr key={gr.key} onClick={() => { setDetailGroup(gr); setDetailPage(1); setDetailStatus("all"); setDSortKey("FEE_PAID"); setDSortDir("asc"); }}
-                    className="border-b border-edge/50 cursor-pointer transition-colors hover:bg-surface-muted/50 group">
-                    <td className="px-2 text-center"><ChevronRight size={14} className="text-ink-light group-hover:text-brand" /></td>
-                    <td className="px-3 py-2.5 text-ink">{gr.state}</td>
-                    <td className="px-3 py-2.5 text-ink font-medium">{gr.city}</td>
-                    <td className="px-3 py-2.5 text-ink max-w-[180px] truncate" title={gr.campus}>{gr.campus}</td>
-                    <td className="px-3 py-2.5 text-ink">{gr.zone}</td>
-                    <td className="px-3 py-2.5 text-ink">{gr.program}</td>
-                    <td className="px-3 py-2.5 text-center"><span className="font-bold text-brand">{gr.total}</span></td>
-                    {!ignoreMarks && <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.lowMarks > 0 ? "text-status-warning" : "text-ink-light")}>{gr.lowMarks}</span></td>}
-                    {!ignoreExam && <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.examFail > 0 ? "text-status-danger" : "text-ink-light")}>{gr.examFail}</span></td>}
-                    <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.met > 0 ? "text-status-success" : "text-ink-light")}>{gr.met}</span></td>
-                    <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.notMet > 0 ? "text-red-600" : "text-ink-light")}>{gr.notMet}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        {(() => {
+          const hPages = Math.max(1, Math.ceil(groupRows.length / PAGE_SIZE));
+          const hPage = Math.min(homePage, hPages);
+          const hData = groupRows.slice((hPage - 1) * PAGE_SIZE, hPage * PAGE_SIZE);
+          return (
+            <section className="bg-surface-card border border-edge rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-edge flex items-center justify-between">
+                <h2 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                  Breakdown <span className="font-normal normal-case text-ink-light">({groupRows.length} groups · {fmt(filteredCount)} students · click to view)</span>
+                </h2>
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] text-ink-muted mr-1">
+                    {groupRows.length === 0 ? 0 : (hPage - 1) * PAGE_SIZE + 1}–{Math.min(hPage * PAGE_SIZE, groupRows.length)} of {groupRows.length}
+                  </span>
+                  <button onClick={() => setHomePage(1)} disabled={hPage <= 1} className="px-2 py-1 text-[11px] rounded hover:bg-surface-muted disabled:opacity-30 text-ink-muted">First</button>
+                  <button onClick={() => setHomePage(p => Math.max(1, p - 1))} disabled={hPage <= 1} className="p-1 rounded hover:bg-surface-muted disabled:opacity-30"><ChevronLeft size={14} /></button>
+                  <span className="text-xs text-ink font-medium px-1">{hPage} / {hPages}</span>
+                  <button onClick={() => setHomePage(p => Math.min(hPages, p + 1))} disabled={hPage >= hPages} className="p-1 rounded hover:bg-surface-muted disabled:opacity-30"><ChevronRight size={14} /></button>
+                  <button onClick={() => setHomePage(hPages)} disabled={hPage >= hPages} className="px-2 py-1 text-[11px] rounded hover:bg-surface-muted disabled:opacity-30 text-ink-muted">Last</button>
+                </div>
+              </div>
+              <div className="overflow-x-auto scrollbar-thin">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="bg-surface-muted border-b border-edge">
+                      <th className="w-7 px-2"></th>
+                      <SortTh tip="State" sortKey="state" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-left">State</SortTh>
+                      <SortTh tip="City" sortKey="city" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-left">City</SortTh>
+                      <SortTh tip="Campus" sortKey="campus" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-left">Campus</SortTh>
+                      <SortTh tip="Zone Incharge" sortKey="zone" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-left">Zone Incharge</SortTh>
+                      <SortTh tip="Program" sortKey="program" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-left">Program</SortTh>
+                      <SortTh tip="Total students" sortKey="total" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-center">Total</SortTh>
+                      {!ignoreMarks && <SortTh tip="Avg Marks below cutoff" sortKey="lowMarks" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-center">Avg Marks</SortTh>}
+                      {!ignoreExam && <SortTh tip={`${examLabel} below cutoff`} sortKey="examFail" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-center">{examLabel}</SortTh>}
+                      <SortTh tip="Met criteria" sortKey="met" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-center">Met</SortTh>
+                      <SortTh tip="Failed criteria" sortKey="notMet" currentKey={sortKey} dir={sortDir} onSort={toggleSort} className="text-center">Not Met</SortTh>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hData.length === 0 && <tr><td colSpan={colCount} className="text-center py-12 text-ink-muted">No data matches the current filters.</td></tr>}
+                    {hData.map((gr) => (
+                      <tr key={gr.key} onClick={() => { setDetailGroup(gr); setDetailPage(1); setDetailStatus("all"); setDSortKey("FEE_PAID"); setDSortDir("asc"); }}
+                        className="border-b border-edge/50 cursor-pointer transition-colors hover:bg-surface-muted/50 group">
+                        <td className="px-2 text-center"><ChevronRight size={14} className="text-ink-light group-hover:text-brand" /></td>
+                        <td className="px-3 py-2.5 text-ink">{gr.state}</td>
+                        <td className="px-3 py-2.5 text-ink font-medium">{gr.city}</td>
+                        <td className="px-3 py-2.5 text-ink max-w-[180px] truncate" title={gr.campus}>{gr.campus}</td>
+                        <td className="px-3 py-2.5 text-ink">{gr.zone}</td>
+                        <td className="px-3 py-2.5 text-ink">{gr.program}</td>
+                        <td className="px-3 py-2.5 text-center"><span className="font-bold text-brand">{gr.total}</span></td>
+                        {!ignoreMarks && <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.lowMarks > 0 ? "text-status-warning" : "text-ink-light")}>{gr.lowMarks}</span></td>}
+                        {!ignoreExam && <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.examFail > 0 ? "text-status-danger" : "text-ink-light")}>{gr.examFail}</span></td>}
+                        <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.met > 0 ? "text-status-success" : "text-ink-light")}>{gr.met}</span></td>
+                        <td className="px-3 py-2.5 text-center"><span className={cn("font-bold", gr.notMet > 0 ? "text-red-600" : "text-ink-light")}>{gr.notMet}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          );
+        })()}
       </main>
     </div>
   );
