@@ -160,10 +160,10 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [selCities, setSelCities] = useState<string[]>([]);
   const [selZones, setSelZones] = useState<string[]>([]);
   const [selCampuses, setSelCampuses] = useState<string[]>([]);
-  const [feeFilter, setFeeFilter] = useState<number>(10000);
+  const [feeFilter, setFeeFilter] = useState<number>(1000);
   const [marksLte, setMarksLte] = useState<number>(100);
   const [jeeLte, setJeeLte] = useState<number>(95);
-  const [skipZeroMarks, setSkipZeroMarks] = useState(true);
+  const [skipZeroMarks, setSkipZeroMarks] = useState(false);
   const [skipZeroJEE, setSkipZeroJEE] = useState(true);
   const [ignoreMarks, setIgnoreMarks] = useState(false);
   const [ignoreJEE, setIgnoreJEE] = useState(false);
@@ -240,10 +240,10 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   const clearFilters = () => {
     setSelStates([]); setSelCities([]); setSelZones([]); setSelCampuses([]);
-    setFeeFilter(10000); setMarksLte(100); setJeeLte(95);
-    setSkipZeroMarks(true); setSkipZeroJEE(true); setIgnoreMarks(false); setIgnoreJEE(false); setDetailGroup(null);
+    setFeeFilter(1000); setMarksLte(100); setJeeLte(95);
+    setSkipZeroMarks(false); setSkipZeroJEE(true); setIgnoreMarks(false); setIgnoreJEE(false); setDetailGroup(null);
   };
-  const hasFilters = selStates.length > 0 || selCities.length > 0 || selZones.length > 0 || selCampuses.length > 0 || feeFilter !== 10000 || marksLte !== 100 || jeeLte !== 95;
+  const hasFilters = selStates.length > 0 || selCities.length > 0 || selZones.length > 0 || selCampuses.length > 0 || feeFilter !== 1000 || marksLte !== 100 || jeeLte !== 95;
 
   const colCount = 9 + (ignoreMarks ? 0 : 1) + (ignoreJEE ? 0 : 1);
 
@@ -288,19 +288,6 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
         </header>
 
         <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-5 space-y-4">
-          {/* Same data criteria */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-            <div className="flex items-start gap-2">
-              <FileText size={16} className="text-blue-500 mt-0.5 shrink-0" />
-              <div className="text-xs text-blue-800 leading-relaxed space-y-0.5">
-                <p className="font-semibold text-blue-900 text-[13px]">Data Criteria</p>
-                <p>Academic Year = <strong>2025-26</strong> · Class Group = <strong>Inter 2</strong> · Group = <strong>M.P.C</strong></p>
-                <p>Student Status = <strong>Current</strong> · Fee Paid &lt; <strong>10,000</strong></p>
-                <p className="text-blue-600 mt-1">Only active MPC Inter-2 students who received high concessions (very low fee paid) in academic year 2025-26.</p>
-              </div>
-            </div>
-          </div>
-
           <section className="bg-surface-card border border-edge rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-edge flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-3">
@@ -402,7 +389,7 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={scLogo} alt="SC" className="w-8 h-8 object-contain" />
-            <h1 className="font-display text-base font-bold text-ink leading-none">Sri Chaitanya Year End Concession Review for MPC Students</h1>
+            <h1 className="font-display text-base font-bold text-ink leading-none">Year End Concession Review for MPC Students (2025-26)</h1>
           </div>
           <button onClick={onLogout} className="flex items-center gap-1.5 text-xs text-ink-muted hover:text-status-danger transition-colors">
             <LogOut size={14} /> Sign out
@@ -416,9 +403,8 @@ export default function Dashboard({ onLogout }: { onLogout: () => void }) {
             <FileText size={16} className="text-blue-500 mt-0.5 shrink-0" />
             <div className="text-xs text-blue-800 leading-relaxed space-y-0.5">
               <p className="font-semibold text-blue-900 text-[13px]">Data Criteria</p>
-              <p>Academic Year = <strong>2025-26</strong> · Class Group = <strong>Inter 2</strong> · Group = <strong>M.P.C</strong></p>
-              <p>Student Status = <strong>Current</strong> · Fee Paid &lt; <strong>10,000</strong></p>
-              <p className="text-blue-600 mt-1">Only active MPC Inter-2 students who received high concessions (very low fee paid) in academic year 2025-26.</p>
+              <p>Class Group = <strong>Inter 2</strong> · Student Status = <strong>Current</strong> · Fee Paid &lt; <strong>10,000</strong></p>
+              <p className="text-blue-600 mt-1">Only active Inter-2 students who received high concessions (very low fee paid).</p>
             </div>
           </div>
         </div>
